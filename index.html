@@ -64,7 +64,7 @@
         <div class="icon">📋</div>
         <h1>Checklist Diario Automático</h1>
         <div id="content">
-            <div class="fecha-hoy" id="fechaDisplay"></div>
+            <div class="fecha-hoy" id="fechaDisplay">🗓️ Hoy: Cargando...</div>
             <p>Detectando día actual...</p>
         </div>
     </div>
@@ -88,7 +88,7 @@
             const fechaDisplay = document.getElementById('fechaDisplay');
             const contentDiv = document.getElementById('content');
             
-            // Mostrar fecha actual
+            // Mostrar fecha actual (SIEMPRE se muestra)
             fechaDisplay.textContent = `🗓️ Hoy: ${fechaHoy}`;
             
             // Verificar si existe en la configuración

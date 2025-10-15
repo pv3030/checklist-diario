@@ -47,6 +47,16 @@
             border-radius: 10px;
             margin-top: 20px;
         }
+        .status-icon {
+            font-size: 40px;
+            margin: 10px 0;
+        }
+        .success {
+            color: #4caf50;
+        }
+        .error-icon {
+            color: #f44336;
+        }
     </style>
 </head>
 <body>
@@ -82,14 +92,15 @@
             fechaDisplay.textContent = `🗓️ Hoy: ${fechaHoy}`;
             
             // Verificar si existe en la configuración
-            if (CONFIG_DIAS[fechaHoy]) {
+            if (CONFIG_DIAS && CONFIG_DIAS[fechaHoy]) {
                 const sheetId = CONFIG_DIAS[fechaHoy];
                 const link = `https://docs.google.com/spreadsheets/d/1V57sHUWGfKQf2t_zqIJo-cQ2uIQ5_kx1JZcQLECa7tc/edit#gid=${sheetId}`;
                 const appLink = `googlesheets://docs.google.com/spreadsheets/d/1V57sHUWGfKQf2t_zqIJo-cQ2uIQ5_kx1JZcQLECa7tc/edit#gid=${sheetId}`;
                 
-                contentDiv.innerHTML += `
+                contentDiv.innerHTML = `
+                    <div class="status-icon success">✅</div>
+                    <p>✅ Hoja encontrada en configuración</p>
                     <div style="margin: 20px 0;">
-                        <p>✅ Hoja encontrada en configuración</p>
                         <a href="${appLink}" class="app-button" id="autoLink">
                             📱 ABRIR HOY AUTOMÁTICAMENTE
                         </a>
@@ -109,8 +120,9 @@
             } else {
                 // Si no encuentra la fecha en configuración
                 contentDiv.innerHTML = `
+                    <div class="status-icon error-icon">❌</div>
+                    <p><strong>❌ Hoja no encontrada en configuración</strong></p>
                     <div class="error">
-                        <h2>⚠️ Hoja no configurada</h2>
                         <p>No se encontró configuración para: <strong>${fechaHoy}</strong></p>
                         <p>Puedes abrir el documento completo:</p>
                         <a href="https://docs.google.com/spreadsheets/d/1V57sHUWGfKQf2t_zqIJo-cQ2uIQ5_kx1JZcQLECa7tc/edit" class="app-button">

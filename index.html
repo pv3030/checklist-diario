@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Checklist Diario</title>
+    <title>Checklist Diario Automático</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {
@@ -23,8 +23,13 @@
             font-size: 60px;
             margin-bottom: 20px;
         }
-        .loading {
-            font-size: 18px;
+        .fecha-hoy {
+            background: rgba(255,255,255,0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-size: 1.2em;
+            font-weight: bold;
         }
         .app-button {
             background: #ff5722;
@@ -36,61 +41,88 @@
             margin: 10px;
             font-size: 18px;
         }
+        .error {
+            background: #d32f2f;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="icon">📋</div>
-        <h1>Checklist Diario</h1>
+        <h1>Checklist Diario Automático</h1>
         <div id="content">
-            <div class="loading">
-                <p>🔄 Abriendo tu checklist...</p>
-                <p><small>Redirigiendo a la app</small></p>
-            </div>
+            <div class="fecha-hoy" id="fechaDisplay"></div>
+            <p>Detectando día actual...</p>
         </div>
     </div>
 
+    <!-- INCLUIR EL ARCHIVO DE CONFIGURACIÓN -->
+    <script src="config-dias.js"></script>
+
     <script>
-        // URLs para abrir el Sheets
-        const sheetsAppUrl = "googlesheets://docs.google.com/spreadsheets/d/1V57sHUWGfKQf2t_zqIJo-cQ2uIQ5_kx1JZcQLECa7tc/edit";
-        const sheetsWebUrl = "https://docs.google.com/spreadsheets/d/1V57sHUWGfKQf2t_zqIJo-cQ2uIQ5_kx1JZcQLECa7tc/edit?usp=drivesdk";
+        // Función para obtener fecha en formato DD-MM-YYYY
+        function obtenerFechaHoy() {
+            const hoy = new Date();
+            const dia = String(hoy.getDate()).padStart(2, '0');
+            const mes = String(hoy.getMonth() + 1).padStart(2, '0');
+            const año = hoy.getFullYear();
+            return `${dia}-${mes}-${año}`;
+        }
         
-        // Función que SIEMPRE redirige
-        function abrirChecklist() {
+        // Función principal
+        function abrirChecklistAutomatico() {
+            const fechaHoy = obtenerFechaHoy();
+            const fechaDisplay = document.getElementById('fechaDisplay');
             const contentDiv = document.getElementById('content');
             
-            // Mostrar mensaje de redirección
-            contentDiv.innerHTML = `
-                <div class="loading">
-                    <p>✅ Acceso permitido</p>
-                    <p>Abriendo checklist en la app...</p>
-                    <a href="${sheetsAppUrl}" class="app-button">
-                        📱 TOCA AQUÍ SI NO SE ABRE
-                    </a>
-                </div>
-            `;
+            // Mostrar fecha actual
+            fechaDisplay.textContent = `🗓️ Hoy: ${fechaHoy}`;
             
-            // Intentar abrir en app inmediatamente
-            setTimeout(() => {
-                window.location.href = sheetsAppUrl;
-            }, 500);
-            
-            // Si después de 3 segundos no se abrió la app, ofrecer web
-            setTimeout(() => {
+            // Verificar si existe en la configuración
+            if (CONFIG_DIAS[fechaHoy]) {
+                const sheetId = CONFIG_DIAS[fechaHoy];
+                const link = `https://docs.google.com/spreadsheets/d/1V57sHUWGfKQf2t_zqIJo-cQ2uIQ5_kx1JZcQLECa7tc/edit#gid=${sheetId}`;
+                const appLink = `googlesheets://docs.google.com/spreadsheets/d/1V57sHUWGfKQf2t_zqIJo-cQ2uIQ5_kx1JZcQLECa7tc/edit#gid=${sheetId}`;
+                
+                contentDiv.innerHTML += `
+                    <div style="margin: 20px 0;">
+                        <p>✅ Hoja encontrada en configuración</p>
+                        <a href="${appLink}" class="app-button" id="autoLink">
+                            📱 ABRIR HOY AUTOMÁTICAMENTE
+                        </a>
+                        <br>
+                        <small><a href="${link}" style="color: white;">Abrir en navegador</a></small>
+                    </div>
+                `;
+                
+                console.log("🎯 Redirigiendo a:", fechaHoy);
+                console.log("🔗 Link:", link);
+                
+                // Redirigir automáticamente después de 1 segundo
+                setTimeout(() => {
+                    window.location.href = appLink;
+                }, 1000);
+                
+            } else {
+                // Si no encuentra la fecha en configuración
                 contentDiv.innerHTML = `
-                    <div class="loading">
-                        <p>⚠️ No se pudo abrir la app</p>
-                        <p>Por favor, usa el enlace web:</p>
-                        <a href="${sheetsWebUrl}" class="app-button">
-                            🌐 ABRIR EN NAVEGADOR
+                    <div class="error">
+                        <h2>⚠️ Hoja no configurada</h2>
+                        <p>No se encontró configuración para: <strong>${fechaHoy}</strong></p>
+                        <p>Puedes abrir el documento completo:</p>
+                        <a href="https://docs.google.com/spreadsheets/d/1V57sHUWGfKQf2t_zqIJo-cQ2uIQ5_kx1JZcQLECa7tc/edit" class="app-button">
+                            📂 ABRIR DOCUMENTO COMPLETO
                         </a>
                     </div>
                 `;
-            }, 3000);
+            }
         }
         
-        // Redirigir inmediatamente al cargar la página
-        window.onload = abrirChecklist;
+        // Ejecutar al cargar
+        window.onload = abrirChecklistAutomatico;
     </script>
 </body>
 </html>

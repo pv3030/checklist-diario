@@ -35,19 +35,6 @@
             border-radius: 10px;
             margin-top: 20px;
         }
-        button {
-            background: white;
-            color: #4285f4;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-top: 10px;
-            font-weight: bold;
-        }
-        .loading {
-            font-size: 18px;
-        }
         .app-button {
             background: #ff5722;
             color: white;
@@ -58,6 +45,9 @@
             margin: 10px;
             font-size: 18px;
         }
+        .loading {
+            font-size: 18px;
+        }
     </style>
 </head>
 <body>
@@ -66,8 +56,7 @@
         <h1>Checklist Diario</h1>
         <div id="content">
             <div class="loading">
-                <p>📍 Detectando tu ubicación...</p>
-                <p><small>Permite el acceso a ubicación cuando te lo pida</small></p>
+                <p>📍 Verificando acceso...</p>
             </div>
         </div>
     </div>
@@ -76,130 +65,92 @@
         // CIUDADES PERMITIDAS
         const ciudadesPermitidas = ["Barcelona", "Salou", "Tarragona"];
         
-        // URL para abrir en app de Sheets
+        // URLs
         const sheetsAppUrl = "googlesheets://docs.google.com/spreadsheets/d/1V57sHUWGfKQf2t_zqIJo-cQ2uIQ5_kx1JZcQLECa7tc/edit";
         const sheetsWebUrl = "https://docs.google.com/spreadsheets/d/1V57sHUWGfKQf2t_zqIJo-cQ2uIQ5_kx1JZcQLECa7tc/edit?usp=drivesdk";
         
-        // Función para obtener ubicación por GPS/IP
-        async function verificarUbicacion() {
+        // Función PRINCIPAL más simple y confiable
+        async function verificarAcceso() {
             const contentDiv = document.getElementById('content');
             
             try {
-                // PRIMERO: Intentar con Geolocalización GPS (más preciso)
-                if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(
-                        async (position) => {
-                            const lat = position.coords.latitude;
-                            const lon = position.coords.longitude;
-                            
-                            // Convertir coordenadas a ciudad
-                            const ciudad = await obtenerCiudadDesdeCoordenadas(lat, lon);
-                            verificarCiudad(ciudad);
-                        },
-                        async (error) => {
-                            // Si GPS falla, usar geolocalización por IP
-                            console.log("GPS no disponible, usando IP");
-                            const ciudad = await obtenerCiudadDesdeIP();
-                            verificarCiudad(ciudad);
-                        }
-                    );
-                } else {
-                    // Si no hay GPS, usar solo IP
-                    const ciudad = await obtenerCiudadDesdeIP();
-                    verificarCiudad(ciudad);
-                }
-            } catch (error) {
-                mostrarError("Error al detectar ubicación: " + error.message);
-            }
-        }
-        
-        // Obtener ciudad desde coordenadas GPS
-        async function obtenerCiudadDesdeCoordenadas(lat, lon) {
-            try {
-                const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=es`);
-                const data = await response.json();
-                return data.city;
-            } catch (error) {
-                throw new Error("No se pudo obtener ciudad desde coordenadas");
-            }
-        }
-        
-        // Obtener ciudad desde IP
-        async function obtenerCiudadDesdeIP() {
-            try {
+                // Método MÁS CONFABLE: Usar ipapi.co (funciona mejor en Safari)
                 const response = await fetch('https://ipapi.co/json/');
                 const data = await response.json();
-                return data.city;
+                
+                const ciudad = data.city;
+                const ip = data.ip;
+                
+                console.log("📍 Ciudad detectada:", ciudad);
+                console.log("🌐 IP:", ip);
+                
+                if (!ciudad) {
+                    throw new Error("No se pudo detectar la ciudad");
+                }
+                
+                // Verificar si la ciudad está permitida (comparación flexible)
+                const ciudadPermitida = ciudadesPermitidas.some(ciudadPermitida => 
+                    ciudad.toLowerCase().includes(ciudadPermitida.toLowerCase())
+                );
+                
+                if (ciudadPermitida) {
+                    // ✅ ACCESO PERMITIDO
+                    contentDiv.innerHTML = `
+                        <div class="success">
+                            <p>✅ Ubicación verificada: <strong>${ciudad}</strong></p>
+                            <p>Haz clic para abrir:</p>
+                            <a href="${sheetsAppUrl}" class="app-button" onclick="abrirEnApp()">
+                                📱 ABRIR EN APP
+                            </a>
+                            <p><small>O <a href="${sheetsWebUrl}" style="color: white; text-decoration: underline;">abrir en navegador</a></small></p>
+                        </div>
+                    `;
+                    
+                    // Intentar abrir automáticamente en app
+                    setTimeout(() => {
+                        window.location.href = sheetsAppUrl;
+                    }, 1000);
+                    
+                } else {
+                    // ❌ ACCESO DENEGADO
+                    contentDiv.innerHTML = `
+                        <div class="error">
+                            <h2>🚫 Acceso Denegado</h2>
+                            <p>Disponible solo en: <strong>${ciudadesPermitidas.join(", ")}</strong></p>
+                            <p>Tu ubicación: <strong>${ciudad}</strong></p>
+                            <p><small>IP: ${ip}</small></p>
+                        </div>
+                    `;
+                }
+                
             } catch (error) {
-                throw new Error("No se pudo obtener ciudad desde IP");
-            }
-        }
-        
-        // Verificar si la ciudad está permitida
-        function verificarCiudad(ciudad) {
-            const contentDiv = document.getElementById('content');
-            
-            console.log("Ciudad detectada:", ciudad);
-            console.log("Ciudades permitidas:", ciudadesPermitidas);
-            
-            if (!ciudad) {
-                mostrarError("No se pudo detectar tu ciudad");
-                return;
-            }
-            
-            // Verificar si la ciudad está en la lista permitida
-            const ciudadPermitida = ciudadesPermitidas.some(ciudadPermitida => 
-                ciudad.toLowerCase().includes(ciudadPermitida.toLowerCase())
-            );
-            
-            if (ciudadPermitida) {
-                // CIUDAD PERMITIDA - Mostrar botón para abrir en app
+                console.error("Error:", error);
+                
+                // 🆘 SI FALLA TODO, MOSTRAR OPCIÓN MANUAL
                 contentDiv.innerHTML = `
                     <div class="success">
-                        <p>✅ Ubicación verificada: ${ciudad}</p>
-                        <p>Haz clic para abrir en la app:</p>
-                        <a href="${sheetsAppUrl}" class="app-button" id="appLink">
-                            📱 ABRIR EN SHEETS APP
+                        <p>⚠️ No se pudo verificar ubicación automáticamente</p>
+                        <p>Si estás en Barcelona, Salou o Tarragona:</p>
+                        <a href="${sheetsAppUrl}" class="app-button">
+                            📱 ABRIR CHECKLIST
                         </a>
-                        <p><small>O <a href="${sheetsWebUrl}" style="color: white;">abrir en navegador</a></small></p>
-                    </div>
-                `;
-                
-                // Intentar abrir automáticamente en app
-                setTimeout(() => {
-                    window.location.href = sheetsAppUrl;
-                }, 500);
-                
-                // Si después de 2 segundos no se abrió la app, ofrecer alternativa
-                setTimeout(() => {
-                    document.getElementById('appLink').style.display = 'block';
-                }, 2000);
-                
-            } else {
-                // CIUDAD NO PERMITIDA - Mostrar error
-                contentDiv.innerHTML = `
-                    <div class="error">
-                        <h2>🚫 Acceso Denegado</h2>
-                        <p>Esta página solo está disponible en:</p>
-                        <p><strong>${ciudadesPermitidas.join(", ")}</strong></p>
-                        <p>Tu ubicación detectada: <strong>${ciudad}</strong></p>
+                        <p><small><a href="${sheetsWebUrl}" style="color: white;">Abrir en navegador</a></small></p>
                     </div>
                 `;
             }
         }
         
-        function mostrarError(mensaje) {
-            const contentDiv = document.getElementById('content');
-            contentDiv.innerHTML = `
-                <div class="error">
-                    <p>${mensaje}</p>
-                    <button onclick="verificarUbicacion()">🔄 Reintentar</button>
-                </div>
-            `;
+        // Función para forzar apertura en app
+        function abrirEnApp() {
+            window.location.href = sheetsAppUrl;
+            // Si no abre en 1 segundo, ofrecer alternativa web
+            setTimeout(() => {
+                window.location.href = sheetsWebUrl;
+            }, 1000);
         }
         
-        // Ejecutar verificación al cargar
-        verificarUbicacion();
+        // Ejecutar cuando cargue la página
+        verificarAcceso();
     </script>
 </body>
 </html>
